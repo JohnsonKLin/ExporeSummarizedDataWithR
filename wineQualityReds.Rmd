@@ -1,0 +1,393 @@
+Analysis the red wine quality
+========================================================
+
+In this project, we analysis the red wine quality. This report explores a dataset containing and attributes for approximately 1600 with 11 variables. All of the variables are continuous variables.
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+library(RColorBrewer)
+library(memisc)
+
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+wins = read.csv('wineQualityReds.csv')
+wins$quality <- factor(wins$quality)
+
+```
+
+```{r echo=FALSE, functions}
+# create a histogram for the variable function 
+create_hist_plot <- function(variable,title,unit){
+  return(ggplot(aes_string(x = variable), data = wins, xlab=unit)+
+  geom_histogram(color = 'black', fill = '#F79420'))
+}
+# create a histogram for the variable with log10 scale
+create_hist_log10_plot <- function(variable){
+  ggplot(aes_string(x = variable),data = wins)+
+  geom_histogram(color = 'black', fill = '#F79420')+
+  scale_x_log10()
+}
+# create a hisogram for the vaiable with power scale
+create_hist_pwr_plot <- function(variable,power){
+  ggplot(aes(x = variable^power),data = wins)+
+  geom_histogram(color = 'black', fill = '#F79420')
+}
+# create point plot with quality variable and add smooth line for the plot
+create_point_smooth_for_quality_plot <- function(variable,color){
+  ggplot(aes(x = as.numeric(levels(wins$quality))[wins$quality], y = variable), data = wins)+
+  geom_point(color = color, alpha = 1/3, position = position_jitter())+
+  stat_smooth(method = 'lm')+
+    ylim(quantile(variable, 0.01),quantile(variable, 0.99))+
+    xlab("quality")
+}
+# create point plot with quality variable and add median line for the plot
+create_point_median_line_for_quality_plot <- function(variable,color){
+  ggplot(aes_string(x = 'quality', y = variable), data = wins)+
+  geom_point(color = color, alpha = 1/3, position = position_jitter())+
+  stat_smooth(method = 'lm')
+}
+# create box plot for the variable with quality variable.
+create_box_for_quality_plot <- function(variable){
+  ggplot(aes_string(x='quality',y = variable), data = wins)+
+  geom_boxplot(aes(group = cut_width(quality, 1)))+
+  ylim(quantile(wins$variable, 0.01),quantile(wins$variable, 0.99))
+}
+# This function is also for quality variable
+create_summary_plot <- function(variable,title){
+  ggplot(aes(x=as.numeric(levels(wins$quality))[wins$quality], y = variable), data = wins)+
+  geom_point(color = 'orange', alpha = 1/2, position = position_jitter())+
+  ylim(quantile(wins$variable, 0.01),quantile(wins$variable, 0.99))+
+  ggtitle(title)+stat_smooth(method = 'lm')+
+    geom_line(stat = 'summary',fun.y = median,  linetype = 2)+
+    geom_line(stat = "summary",fun.y = quantile, fun.args=list(probs=0.1),
+              linetype = 3,color = 'blue')+
+    geom_line(stat = "summary",fun.y = quantile, fun.args=list(probs=0.9),
+              linetype = 1,color = 'red')
+}
+# create multi variable plot with different color
+create_multi_variable_plot <- function(y_variable,color_variable){
+  ggplot(aes_string(y = y_variable,x='quality', color = color_variable), data=wins)+
+  geom_point(alpha = 1/2,position = position_jitter())+
+    geom_line(stat = 'summary',fun.y = median,  linetype = 2)+
+    geom_line(stat = "summary",fun.y = quantile, fun.args=list(probs=0.1),
+              linetype = 3,color = 'blue')+
+    geom_line(stat = "summary",fun.y = quantile, fun.args=list(probs=0.9),
+              linetype = 1,color = 'red')
+}
+#create multi variable with quality
+create_multi_variable_with_quality <- function(vx,vy){
+  ggplot(aes(y =vy ,x=vx, color = quality), data=wins)+
+  geom_point(position = 'jitter')+
+  xlim(quantile(vx,0.01),quantile(vx,0.99))+
+  ylim(quantile(vy,0.01),quantile(vy,0.99))+
+  scale_color_brewer(type = 'div', guide = guide_legend(title = "Color", 
+  reverse = TRUE,override.aes = list(alpha = 1, size = 2)))+
+  theme_dark()
+}
+
+```
+
+```{r echo=FALSE, summary}
+summary(wins)
+wins$fixed.acidity.ratio.volatile.acidity <- wins$fixed.acidity/wins$volatile.acidity
+wins$free.sulfur.dioxide.ratio.total.dioxide <- wins$free.sulfur.dioxide/wins$total.sulfur.dioxide
+wins$alcohol.bucket <- cut(wins$alcohol,seq(8,10,0.5))
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r echo=FALSE, quality_variable}
+summary(wins$quality)
+ggplot(aes(x = quality), data = wins, xlab=unit)+
+  geom_bar(color = 'black', fill = '#F79420')
+```
+
+From the histogram, it roughly appears the normal distribution with the quality peak around 5 to 6. From the summary, the mean is 5.636. The best quality is 8 and the worst quality is 3 and the median is 6.
+
+```{r echo=FALSE, fixed_acidity_variable}
+summary(wins$fixed.acidity)
+aci_p1=create_hist_plot('fixed.acidity')
+aci_p2=create_hist_log10_plot('fixed.acidity')
+grid.arrange(aci_p1,aci_p2)
+```
+
+The fixed acidity roughly shows normal distribution after changing the scale to log10. The standard deviation is 1.741 and median are 7.9. Most wine of fixed acidity is from 6 to 10(no unit).
+
+```{r echo=FALSE, volatile_acidity_variable}
+summary(wins$volatile.acidity)
+vo_p1=create_hist_plot('volatile.acidity','aa')
+vo_p2=create_hist_pwr_plot(wins$volatile.acidity,0.2)
+grid.arrange(vo_p1,vo_p2)
+```
+
+The volatile acidity is slightly like the normal distribution with the continuous scale. But if we change the scale to the log10, it also not appears a perfectly normal distribution. After several time changes, I found the power 0.2 is the best to scale for this variable.
+
+```{r echo=FALSE, chlorides_conti}
+create_hist_plot('chlorides')
+```
+```{r echo=FALSE, chlorides_log}
+summary(wins$chlorides)
+create_hist_log10_plot('chlorides')
+```
+Transformed the long tail data to better understand the distribution of the chlorides. The transformed chlorides distribution appears normal distribution and the peak around 0.79.
+
+```{r echo=FALSE, density_con}
+summary(wins$density)
+create_hist_plot('density')
+```
+The density range is quite small. Make sense! This variable is also following the normal distribution with continual scale.
+
+```{r echo=FALSE, ph_con}
+summary(wins$pH)
+ph_con=create_hist_plot('pH')
+ph_pwr=create_hist_pwr_plot(wins$pH,0.1)
+grid.arrange(ph_con,ph_pwr)
+```
+
+The pH variable shows more likely the normal distribution with power 0.1 scale and the mean are 3.311 and the min value is 2.74 and the max value is 4.010.
+
+```{r echo=FALSE, sulphates_log}
+summary(wins$sulphates)
+  ggplot(aes_string(x = 'sulphates'),data = wins)+
+  geom_histogram(color = 'black', fill = '#F79420')+
+  scale_x_log10(breaks = seq(0,2,0.1))
+```
+
+This variable is also long tail data, changing the variable to log 10 scale appears much better. The median is 0.62 and the mean is 0.6581.
+
+```{r echo=FALSE, total_sulfur_con}
+summary(wins$total.sulfur.dioxide)
+dioxide_p1 = create_hist_plot('total.sulfur.dioxide')
+dioxide_p2 = create_hist_log10_plot('total.sulfur.dioxide')
+grid.arrange(dioxide_p1,dioxide_p2)
+```
+
+The total.sulfur.dioxide variable is definitely log 10 scale variable. The median is 38.00 and the mean is 46.47 and the range from 6 to 289.
+
+```{r echo=FALSE, residual_sulfur_con}
+summary(wins$residual.sugar)
+sugar_p1 = create_hist_plot('residual.sugar')
+sugar_p2 = create_hist_log10_plot('residual.sugar')
+grid.arrange(sugar_p1,sugar_p2)
+```
+
+The residual sugar is also log 10 scale variable. The median is 2.200 and the mean is 2.539. 
+
+```{r}
+  ggplot(aes(x=alcohol,color=quality), data = wins)+
+  geom_density()
+```
+
+The most common alcohol for different quality between 9 to 11.
+
+The histogram of chlorides, sulphates,total.sulfur.dioxide and residual.sugar are right skewed so I’m going to transform the data using a log transform. The histogram of quality,fixed.acidity,volatile.acidity,density,pH variables are continuous variables. So don’t need to change the variable.
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+Our data set consists of 13 variables, with 1599 observations. There are 5 variables are continuous scale variable which are quality,fixed.acidity,volatile.acidity,density,pH. There are 4 variables are log10 scale variables which are chlorides,sulphates,total.sulfur.dioxide,residual.sugar. The other variables don’t belong to any type of scale and any type of distribution. The quality from 3 to 8 with the worst to best wine quality. Other observations: 
+* Most qualities are 5 and 6. 
+* The median quality is 6. 
+* The max quality is 8. 
+* The best scale for volatile.acidity is power 0.2
+
+# Univariate Plots
+
+### What is/are the main feature(s) of interest in your dataset?
+
+The main features in the data set are alcohol, quality. I’d like to determine which features are best for predicting the quality of the red wine. I suspect alcohol,volatile.acidity and residual.sugar can be used to build a predictive model to price diamonds.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+The fixed.acidity, volatile.acidity, citric.acid,residual.sugar,chlorides. I think the residual.sugar contribute the most to the quality after reaching the information on quality.
+
+### Did you create any new variables from existing variables in the dataset?
+
+This dataset is not well to create a new variable for analysis. I was trying to create some variable, such pH/density, alcohol/density. So only create a variable quality.bucket.
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+I log-transformed the right skewed price and volume distributions. All the transformed distribution appears normal distribution. I also transformed two variable with power scale to be more normal distribution.
+
+# Bivariate Plots Section
+
+For the first, we can run a correlation to the quality variable to select the variables we most care about.
+
+```{r echo=FALSE,ggpair}
+#ggpairs(sample(wins,1000))
+cor(wins[sapply(wins, is.numeric)],as.numeric(levels(wins$quality))[wins$quality])
+#cor(wins$volatile.acidity^0.2,wins$quality)
+#cor(wins$pH^0.1,wins$quality) much worst
+```
+
+From the subset of the data, fixed.acidity,citric.acid,residual.sugar,chlorides,total.sulfur.dioxide,density,pH and free.sulfur.dioxide.ratio.total.dioxide don’t seem to have strong correlations with quality. But the volatile.acidity, sulphates,alcohol and fixed.acidity.ratio.volatile.acidity are moderately correlated with carat. I want to look closer at scatter plots involving the quality and some other variable like alcohol,etc.
+
+We found the positive correlation between quality is as following and we also found all median for the different box is increasing. And we can calculate the coefficient for alcohol to quality is 0.476.
+
+```{r echo=FALSE,Bivariate_Plots2}
+p1 = create_point_smooth_for_quality_plot(wins$alcohol,'red')
+p2 = create_box_for_quality_plot('alcohol')  
+grid.arrange(p1,p2)
+```
+
+```{r echo=FALSE,Bivariable_with_median1}
+create_point_smooth_for_quality_plot(wins$alcohol,'red')
+```
+
+We also found the second correlated variable to quality is sulfates. The coefficient for sulfates to quality is 0.251. The median is also increasing.
+
+```{r echo=FALSE,Bivariate_Plots3}
+p3 = create_point_smooth_for_quality_plot(wins$sulphates,'green')
+p4 = create_box_for_quality_plot('sulphates') +
+ scale_y_log10()
+grid.arrange(p3,p4)
+```
+
+Here is some of the negtive correlation for quality:
+
+The coefficient for density to quality is -0.175. We can see this line is decrease and the median is also decrease.
+
+```{r echo=FALSE,Bivariate_Plots4}
+p5 = create_point_smooth_for_quality_plot(wins$density,'blue')
+p6 = create_box_for_quality_plot('density') 
+grid.arrange(p5,p6)
+```
+
+From the density to quality, we can also see the negative correlation. The coefficient for density to quality is -0.391. From the box plot, the median is decreased.
+
+```{r echo=FALSE, Bivariate_Plots}
+p7 = create_point_smooth_for_quality_plot(wins$volatile.acidity,'orange')
+p8 = create_box_for_quality_plot('volatile.acidity')
+grid.arrange(p7,p8)
+```
+
+```{r echo=FALSE,model1}
+newWine1 = data.frame(alcohol = 9.4, volatile.acidity =  0.88, 
+                     sulphates = 0.68, density=0.9978)
+head(newWine1)
+m1 <- lm(formula = as.numeric(levels(wins$quality))[wins$quality]  ~ alcohol + volatile.acidity + I(log(sulphates)) + density, data = wins)
+mtable(m1)
+predict(m1, newdata = newWine1, interval = "prediction", level = .95)
+```
+
+But we found for the density variable alpha level is not well, so just remove this and create new model for this. Seems like only a little bit change.
+
+```{r echo=FALSE,model2}
+newWine2 = data.frame(alcohol = 9.4, volatile.acidity =  0.88, 
+                     sulphates = 0.68)
+m2 <- lm(formula = as.numeric(levels(wins$quality))[wins$quality] ~ alcohol + volatile.acidity + I(log(sulphates)), data = wins)
+mtable(m2)
+predict(m2, newdata = newWine2, interval = "prediction", level = .95)
+```
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+Quality correlates strongly with alcohol, volatile.acidity and less correlate with sulfates, citric.acid. As alcohol, volatile.acidity increase, the quality increase. As volatile.acidity increase, quality decrease. All the relation between quality to another variable appears linear.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+There is strong positive correlation for citric.acid to fixed.acidity, density to fixed.acidity, total.sulfur.dioxide to free.sulfur.dioxide. There are a strong negative correlation for fixed.acidity to pH, citric.acid to pH, alcohol to density.
+
+### What was the strongest relationship you found?
+
+The strongest relationship is between fixed.acidity to pH. But it does not make sense for predict the variable we care about the most. The most variable we want to predict is quality. The quality of wine is positively and strongly correlated with alcohol and its coefficient is 0.476. The second correlated variable is volatile.acidity which coefficient is -0.391. The third and fourth correlated variables are sulphates(0.251),citric.acid(0.226) for quality.
+
+
+# Multivariate Plots Section
+
+```{r echo=FALSE,mul1}
+create_multi_variable_with_quality(wins$volatile.acidity,wins$alcohol)+
+  xlab("volatile.acidity (g / dm^3)")+
+  ylab("alcohol (percent)")
+```
+
+We can see from the plot above, high-quality wine appears most frequently for low volatile acidity and high alcohol side.
+
+```{r echo=FALSE,mul2}
+create_multi_variable_with_quality(wins$sulphates,wins$alcohol)+
+  xlab("sulphates (g / dm^3)")+
+  ylab("alcohol (percent)")
+```
+
+For the hight quality wine most frequently appears in the upper-right corner which means the high quality with high alcohol and high sulphates. We also found for the lower alcohol wine have more range of sulphates.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+For the hight quality wine most frequently appears in the upper-right corner which means the high quality with high alcohol and high sulfates. We also found for the lower alcohol wine have more range of sulphates. We can see from the plot above, high-quality wine appears most frequently to low volatile acidity and high alcohol side.
+
+### Were there any interesting or surprising interactions between features?
+
+Sugar has nothing to do with wine quality. I supposed less sugar is high-quality wine.
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+We created one linear model to predict quality with alcohol, volatile.acidity, sulphates and density. The newWine is an example. It predicts that fit is 4.95692 and confidential 0.95 intervals between 3.671375 to 6.242464. The strengths are alcohol have a huge impact on quality. The limitations are that we didn’t involve the variable like the brand, location etc. It may also affect the wine quality.
+
+
+# Final Plots and Summary
+
+### Plot One
+
+```{r echo=FALSE,Plot_one}
+create_summary_plot(wins$alcohol,"Quality by alcohol")+
+  xlab("quality")+
+  ylab("alcohol (percent)")
+```
+
+### Description One
+
+The alcohol has a huge impact on the wine quality. We can see from the regression line that one alcohol increase with 0.303 quality increase. There is three line from top to down are quartile 0.9, median and 0.1. For the quality 5, the density is very high.
+
+### Plot Two
+
+```{r echo=FALSE, Plot_Two}
+  summary(wins$quality)
+  summary(as.numeric(levels(wins$quality))[wins$quality])
+  ggplot(aes(x=wins$quality), data = wins)+
+  geom_bar()+
+  ggtitle("Quality Distribution")+
+  xlab("Quality")
+```
+
+### Description Two
+
+The quality shows a normal distribution. Amount is so high for the 5 and 6 quality wine which means is more of the wine below to the 5 or 6 quality. For the quality 5 have 681 wines in the dataset and for the quality 6 have 638 wines. The 1st qu is 5 and 3rd qu is 6. The mean for the quality is 5.636 and the median is 6.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+create_summary_plot(wins$volatile.acidity,"Volatile.acidity by alcohol")+
+  xlab("Quality")+
+  ylab("volatile.acidity (g / dm^3)")
+```
+
+### Description Three
+
+As volatile acidity increase, the quality decreases especially from 4 to 5. We can see from regression line, as quality increate one unit the volatile acidity decrease 1.156. For the quality 5 and 6, most of the volatile acidity is from 0.4 to 0.8 according to three quantile lines. Once the quality more than 7, the volatile acidity become horizontal.
+
+# Reflection
+
+The red wine dataset contains information on almost 1600 wine across 12 variables. I started by understanding the top 10 individual variables in the data set, and then I explored intereting qustions and leads as continouse to make observations on the plots. Eventually, I explored the quality of the wine across the many variables and created a linear model to predict wine quality. 
+
+There was a clear trend between the alchole, sulphates and volatile.acidity its quality. I was surpriced that residual.sugar didn't have a strong positive correlation with quality. For the linear model, all the wine were included since information on quality, alcohol, volatile.acidity and sulphates. After transforming sulphates to log scale. The model was able to account for 30% of variance of dataset.
+
+The challenges during my analysis are all the variable is continuous that I can not separate them clearly. So I cut quality into the bucket. But it could misleading for the quality and reader may suppose quality is continouse variable. So I have convert the quality as numberic variable. And the second chanllenge during my analysis is to choose the right plot and right variable for the multi variable plot. Because of this dataset is not quite well for creating multi-variable plot. Eventually, I found that this dataset is fit for quality as color with two variables.   
+
+There are some limitation for the dataset. It didn't put some variable like production date, location, brand etc, into consideration. In the future, we may involve more feature and variable like the brand, production location, production date to improve the prediction result. 
